@@ -1,0 +1,102 @@
+---
+import subs from "../../data/subs.json";
+import { getCompleteCalendar, getRandomDateInMonth, months } from "../../utils/utils";
+import type { Month } from "../../utils/types";
+import Icon from "../../components/icon.astro";
+import "../../styles/main.css";
+
+export function getStaticPaths() {
+  return Object.keys(subs).map((month, index) => {
+    const year = new Date().getFullYear();
+    const calendar = getCompleteCalendar(year, index);
+    return {
+      params: {
+        month: month.toLowerCase(),
+      },
+      props: {
+        year,
+        calendar,
+        total: subs[month as Month].reduce(
+          (acc, current) => acc + parseInt(current.amount, 10),
+          0,
+        ),
+        subs: subs[month as Month].map((sub: any) => ({
+          ...sub,
+          date: getRandomDateInMonth(year, index).getDate(),
+        })),
+      },
+    };
+  });
+}
+
+const { month } = Astro.params;
+const props = Astro.props;
+
+const weeks = [];
+
+for (let i = 0; i < props.calendar.length; i += 7) {
+  weeks.push(props.calendar.slice(i, i + 7));
+}
+let acc = 0;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+
+    <meta charset="utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no"/>
+    <meta name="theme-color" content="#CC0088"/>
+    <meta property="og:site_name" content="Expense Calendar View Transitions" />
+    <meta property="og:title" content="Expense Calendar View Transitions" />
+    <meta name="author" content="Ankush Yadav" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:type" content="website" />
+
+    <title>
+      Expense Breakdown - {
+        `${month.charAt(0).toUpperCase()}${month.slice(1)} '${props.year.toString().substring(2)}`
+      }
+    </title>
+  </head>
+  <body>
+    <div class="w-[clamp(400px,50vmin,600px)] aspect-square rounded-full grid place-items-center relative">
+      <svg class="w-full overflow-visible aspect-square absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+        <!-- Background circle (full donut) -->
+        {props.subs.map((sub, index) => {
+          const start = acc
+          const share = Math.floor((parseFloat(sub.amount) / props.total) * 100)
+          acc += share
+          return (
+            <circle cx="18" cy="18" r="15.915" style={`--start: ${((Math.floor(start) + 4) / 100) * 360}; view-transition-name: --circle-${index};`} fill="transparent" stroke="currentColor" stroke-width="5"
+              stroke-dasharray={`${share - 8}, 100`} stroke-linecap="round"/>
+          )
+        })}
+        <!-- Donut segment -->
+      </svg>
+      <a href={`/${month}`} rel="prefetch" style="view-transition-name: total;" class="grid text-center">
+        <span class="opacity-50 text-lg">Monthly Spend</span>
+        <span class="text-4xl font-bold">${props.total.toFixed(2)}</span>
+      </a>
+      {props.subs.map(sub => {
+        const start = acc
+        const share = (parseFloat(sub.amount) / props.total) * 360
+        acc += share
+        return (
+          <div class="icon" style={`--start: ${start}; view-transition-name: ${sub.product.toLowerCase().replace('+', '')}`}>
+            <Icon product={sub.product}></Icon>
+          </div>
+        )
+      })}
+    </div>
+    <nav class="text-sm fixed bottom-4 right-4"><ul class="uppercase">
+      {months.map(m => {
+        return (<li class={`${month === m.toLowerCase() ? '' : 'opacity-30'}`}><a aria-current={m.toLowerCase() === month ? 'page' : false} href={`/breakdown/${m.toLowerCase()}`}>{m.substring(0, 3)}</a></li>)
+      })}
+    </ul></nav>
+  </body>
+</html>
